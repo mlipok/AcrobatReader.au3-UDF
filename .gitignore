@@ -1,0 +1,10 @@
+# AutoIt and SciTE generated files
+BackUp/
+*.bak
+*.old
+*.exe
+*.a3x
+*.log
+
+# Editor and operating-system files
+Thumbs.db
