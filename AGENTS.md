@@ -1,6 +1,7 @@
-## AutoIt function headers and UDF development
+## AutoIt function headers, UDF development, and best coding practices
 
 - Before writing or reviewing an AutoIt function header, check `UDF-spec.md`, especially **Functions → Headers** and **Internal use only**. The source page is marked as a work in progress; where it differs from the repository-specific rules below, follow these rules.
+- Before creating or reviewing a UDF, also check `AutoIt_Best_coding_practices.md` for guidance on function use, variable names and scope, initialization, constants, Au3Check directives, magic numbers, and `#include-once`. Treat its guidance as recommendations; follow the specific repository rules in this file where they differ.
 - Use a `; #FUNCTION#` block for public functions and a `; #INTERNAL_USE_ONLY#` block for helper functions. Keep the standard field layout used in this repository: `Name`, `Description`, `Syntax`, `Parameters`, `Return values`, `Author`, `Modified`, `Remarks`, `Related`, `Link`, `Example`.
 - Keep `Description` concise. In `Parameters`, explain the meaning of arguments, default values, and `ByRef` where these affect use of the function. The header must match the actual signature and execution paths.
 - Use `Modified` to name people who helped modify the function. Do not put dates, change descriptions, or version history there.
