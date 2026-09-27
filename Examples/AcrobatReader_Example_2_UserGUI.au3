@@ -16,8 +16,9 @@ Func _Example()
 	Local $idStatus = GUICtrlCreateLabel('Choose a file using Open PDF.', 265, 16, 610, 22)
 	GUICtrlSetResizing($idStatus, $GUI_DOCKALL)
 	Local $mViewer = _AcrobatReader_Create($hGUI, 0, 48, 900, 652)
-	If @error Then
-		MsgBox($MB_ICONERROR, 'UserGUI', 'Create error: ' & @error)
+	Local $iCreateError = @error
+	If $iCreateError Then
+		MsgBox($MB_ICONERROR, 'UserGUI', 'Create error: ' & $iCreateError)
 		GUIDelete($hGUI)
 		Return
 	EndIf
@@ -34,17 +35,20 @@ Func _Example()
 					Local $sFile = FileOpenDialog('Choose PDF', @ScriptDir, 'PDF (*.pdf)', $FD_FILEMUSTEXIST, '', $hGUI)
 					If Not @error Then
 						_AcrobatReader_Open($mViewer, $sFile)
-						If @error Then MsgBox($MB_ICONERROR, 'UserGUI', 'Open error: ' & @error & ', detail: ' & @extended, 0, $hGUI)
+						Local $iOpenError = @error, $iOpenExtended = @extended
+						If $iOpenError Then MsgBox($MB_ICONERROR, 'UserGUI', 'Open error: ' & $iOpenError & ', detail: ' & $iOpenExtended, 0, $hGUI)
 						$iLastState = -1
 					EndIf
 				Case $idClear
 					_AcrobatReader_Clear($mViewer)
-					If @error Then MsgBox($MB_ICONERROR, 'UserGUI', 'Clear error: ' & @error, 0, $hGUI)
+					Local $iClearError = @error, $iClearExtended = @extended
+					If $iClearError Then MsgBox($MB_ICONERROR, 'UserGUI', 'Clear error: ' & $iClearError & ', detail: ' & $iClearExtended, 0, $hGUI)
 				Case $GUI_EVENT_RESIZED, $GUI_EVENT_MAXIMIZE, $GUI_EVENT_RESTORE
 					Local $aSize = WinGetClientSize($hGUI)
 					If IsArray($aSize) And $aSize[0] > 0 And $aSize[1] > 48 Then
 						_AcrobatReader_Resize($mViewer, 0, 48, $aSize[0], $aSize[1] - 48)
-						If @error Then GUICtrlSetData($idStatus, 'Resize error: ' & @error)
+						Local $iResizeError = @error, $iResizeExtended = @extended
+						If $iResizeError Then GUICtrlSetData($idStatus, 'Resize error: ' & $iResizeError & ', detail: ' & $iResizeExtended)
 					EndIf
 			EndSwitch
 		EndIf
@@ -56,7 +60,7 @@ Func _Example()
 				Case $ACROBATREADER_LOADING
 					GUICtrlSetData($idStatus, 'Opening... Clear / Cancel stops navigation.')
 				Case $ACROBATREADER_ACCEPTED
-					GUICtrlSetData($idStatus, $mViewer.file)
+					GUICtrlSetData($idStatus, 'Command accepted (rendering not confirmed): ' & $mViewer.file)
 				Case $ACROBATREADER_ERROR
 					GUICtrlSetData($idStatus, 'Error: ' & $iError & ', detail: ' & $iExtended)
 			EndSwitch
@@ -65,6 +69,7 @@ Func _Example()
 		Sleep(10)
 	WEnd
 	_AcrobatReader_Destroy($mViewer)
-	If @error Then MsgBox($MB_ICONERROR, 'UserGUI', 'Cleanup error: ' & @error, 0, $hGUI)
+	Local $iDestroyError = @error, $iDestroyExtended = @extended
+	If $iDestroyError Then MsgBox($MB_ICONERROR, 'UserGUI', 'Cleanup error: ' & $iDestroyError & ', detail: ' & $iDestroyExtended, 0, $hGUI)
 	If Not GUIDelete($hGUI) Then MsgBox($MB_ICONERROR, 'UserGUI', 'Could not delete application GUI.')
 EndFunc   ;==>_Example
