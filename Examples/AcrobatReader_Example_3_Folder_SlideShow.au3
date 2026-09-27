@@ -17,15 +17,16 @@ Func _Example()
 	Local $hGUI = GUICreate('PDF slideshow', @DesktopWidth - 100, @DesktopHeight - 100, 50, 0, BitOR($GUI_SS_DEFAULT_GUI, $WS_CLIPCHILDREN), $WS_EX_TOPMOST)
 	If Not @Compiled Then GUISetIcon('z:\!!!_SVN_AU3\ICONS\Work_black.ico') ; will change icon
 	Local $mViewer = _AcrobatReader_Create($hGUI, 0, 0, @DesktopWidth - 100, @DesktopHeight - 100)
-	If @error Then
-		MsgBox($MB_ICONERROR, 'PDF slideshow', 'Create error: ' & @error)
+	Local $iCreateError = @error
+	If $iCreateError Then
+		MsgBox($MB_ICONERROR, 'PDF slideshow', 'Create error: ' & $iCreateError)
 		GUIDelete($hGUI)
 		Return
 	EndIf
 	GUISetState(@SW_SHOW, $hGUI)
 	Local $bClose = False
 	For $i = 1 To $aFiles[0]
-		WinSetTitle($hGUI, '', $i & '/' & $aFiles[0] & ' - ' & $aFiles[$i])
+		WinSetTitle($hGUI, '', 'Opening ' & $i & '/' & $aFiles[0] & ' - ' & $aFiles[$i])
 		_AcrobatReader_Open($mViewer, $aFiles[$i])
 		Local $iError = @error, $iExtended = @extended
 		If $iError Then
@@ -48,13 +49,17 @@ Func _Example()
 				ExitLoop
 			EndIf
 			; The interval starts after command acceptance, not a render-complete signal.
-			If $iState = $ACROBATREADER_ACCEPTED And $hTimer = 0 Then $hTimer = TimerInit()
+			If $iState = $ACROBATREADER_ACCEPTED And $hTimer = 0 Then
+				WinSetTitle($hGUI, '', 'Command accepted (rendering not confirmed) ' & $i & '/' & $aFiles[0] & ' - ' & $aFiles[$i])
+				$hTimer = TimerInit()
+			EndIf
 			If $hTimer <> 0 And TimerDiff($hTimer) >= 2000 Then ExitLoop
 			Sleep(10)
 		WEnd
 		If $bClose Then ExitLoop
 	Next
 	_AcrobatReader_Destroy($mViewer)
-	If @error Then MsgBox($MB_ICONERROR, 'PDF slideshow', 'Cleanup error: ' & @error, 0, $hGUI)
+	Local $iDestroyError = @error, $iDestroyExtended = @extended
+	If $iDestroyError Then MsgBox($MB_ICONERROR, 'PDF slideshow', 'Cleanup error: ' & $iDestroyError & ', detail: ' & $iDestroyExtended, 0, $hGUI)
 	If Not GUIDelete($hGUI) Then MsgBox($MB_ICONERROR, 'PDF slideshow', 'Could not delete application GUI.')
 EndFunc   ;==>_Example
