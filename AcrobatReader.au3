@@ -373,7 +373,7 @@ EndFunc   ;==>_AcrobatReader_IsActiveWindow
 ;                    5 = ActiveX host is invalid or could not be created.
 ;                    6 = PDF load or Shell navigation failed.
 ;                    8 = PDF control configuration failed.
-;                    9 = Cleanup of the preceding request failed.
+;                    9 = ActiveX cleanup failed before or during this request.
 ;                  @extended carries the underlying error when available.
 ; Author ........: mLipok
 ; Modified ......: Codex
@@ -433,6 +433,7 @@ EndFunc   ;==>_AcrobatReader_Open
 ;                    6 = PDF load, Shell navigation or COM polling failed.
 ;                    7 = Navigation timed out.
 ;                    8 = PDF control configuration failed.
+;                    9 = ActiveX cleanup failed after a preview error.
 ;                  @extended carries the underlying COM error when available.
 ; Author ........: mLipok
 ; Modified ......: Codex
@@ -446,14 +447,8 @@ Func _AcrobatReader_Poll(ByRef $m)
 	If Not __AcrobatReader_Valid($m) Then Return SetError(2, 0, $ACROBATREADER_ERROR)
 	If $m.state = $ACROBATREADER_ERROR Then Return SetError($m.error, $m.extended, $m.state)
 	If $m.state <> $ACROBATREADER_LOADING Then Return SetError(0, 0, $m.state)
-	If Not WinExists($m.parent) Then
-		__AcrobatReader_Fail($m, 3)
-		Return SetError(3, 0, $ACROBATREADER_ERROR)
-	EndIf
-	If TimerDiff($m.timer) >= $m.timeout Then
-		__AcrobatReader_Fail($m, 7)
-		Return SetError(7, 0, $ACROBATREADER_ERROR)
-	EndIf
+	If Not WinExists($m.parent) Then Return __AcrobatReader_PollFail($m, 3, 0)
+	If TimerDiff($m.timer) >= $m.timeout Then Return __AcrobatReader_PollFail($m, 7, 0)
 	Local $oLocal_COM_Error_Handler = ObjEvent('AutoIt.Error', __AcrobatReader_COM_ErrorFunction)
 	#forceref $oLocal_COM_Error_Handler
 	Local $bBusy = $m.shell.Busy
@@ -528,9 +523,9 @@ EndFunc   ;==>_AcrobatReader_Resize
 ; Description ...: Shows a blocking PDF viewer in a GUI owned by this function.
 ; Syntax ........: _AcrobatReader_SimpleViewer($sFile[, $sTitle = 'PDF'[, $iWidth = 900[, $iHeight = 700[, $bShell = False[, $hParentHWND = 0]]]]])
 ; Parameters ....: $sFile                - Full path to a local PDF file.
-;                  $sTitle               - Window title; default PDF. Ignored by the compatibility adapter.
-;                  $iWidth               - Preview or viewer width; default shown in syntax.
-;                  $iHeight              - Preview or viewer height; default shown in syntax.
+;                  $sTitle               - Viewer window title; default PDF.
+;                  $iWidth               - Viewer width; default 900.
+;                  $iHeight              - Viewer height; default 700.
 ;                  $bShell               - True selects Shell.Explorer.2; False selects AcroPDF.PDF.1.
 ;                  $hParentHWND          - Optional GUI handle in this process; 0 leaves other windows enabled.
 ; Return values .: On Success - 1 after normal close with @error = 0.
@@ -593,9 +588,13 @@ Func _AcrobatReader_SimpleViewer($sFile, $sTitle = 'PDF', $iWidth = 900, $iHeigh
 			If $aMsg[0] = $GUI_EVENT_CLOSE Then ExitLoop
 			If $aMsg[0] = $GUI_EVENT_RESIZED Or $aMsg[0] = $GUI_EVENT_MAXIMIZE Or $aMsg[0] = $GUI_EVENT_RESTORE Then
 				Local $aSize = WinGetClientSize($hGUI)
-				If IsArray($aSize) And $aSize[0] > 0 And $aSize[1] > 0 Then _AcrobatReader_Resize($m, 0, 0, $aSize[0], $aSize[1])
-				$iError = @error
-				$iExtended = @extended
+				If Not IsArray($aSize) Then
+					$iError = 3
+				ElseIf $aSize[0] > 0 And $aSize[1] > 0 Then
+					_AcrobatReader_Resize($m, 0, 0, $aSize[0], $aSize[1])
+					$iError = @error
+					$iExtended = @extended
+				EndIf
 			EndIf
 		EndIf
 		If $iError Then ExitLoop
@@ -825,10 +824,10 @@ EndFunc   ;==>__AcrobatReader_CurrentGUI
 ; Parameters ....: $m                    - Preview context passed ByRef.
 ;                  $iError               - Error code to store.
 ;                  $iExtended            - Extended error value.
-; Return values .: 0 with the supplied @error and @extended.
+; Return values .: On Failure - 0 with the supplied @error/@extended, or with the cleanup error if releasing the control fails.
 ; Author ........: mLipok
 ; Modified ......: Codex
-; Remarks .......: Retains the requested path for diagnostics.
+; Remarks .......: Retains the requested path for diagnostics. Cleanup error takes precedence when the control remains active.
 ; Related .......: _AcrobatReader_Clear
 ; Link ..........:
 ; Example .......: No
@@ -836,6 +835,13 @@ EndFunc   ;==>__AcrobatReader_CurrentGUI
 Func __AcrobatReader_Fail(ByRef $m, $iError, $iExtended = 0)
 	Local $sFile = $m.file
 	_AcrobatReader_Clear($m)
+	Local $iCleanupError = @error, $iCleanupExtended = @extended
+	If $iCleanupError Then
+		$m.state = $ACROBATREADER_ERROR
+		$m.error = $iCleanupError
+		$m.extended = $iCleanupExtended
+		Return SetError($iCleanupError, $iCleanupExtended, 0)
+	EndIf
 	$m.file = $sFile
 	$m.state = $ACROBATREADER_ERROR
 	$m.error = $iError
@@ -850,7 +856,7 @@ EndFunc   ;==>__AcrobatReader_Fail
 ; Parameters ....: $m                    - Preview context passed ByRef.
 ;                  $iError               - Error code to store.
 ;                  $iExtended            - Extended error value.
-; Return values .: ACROBATREADER_ERROR with supplied @error and @extended.
+; Return values .: ACROBATREADER_ERROR with the supplied @error/@extended, or with a cleanup error.
 ; Author ........: mLipok
 ; Modified ......: Codex
 ; Remarks .......: Releases the failed preview through __AcrobatReader_Fail.
@@ -860,7 +866,8 @@ EndFunc   ;==>__AcrobatReader_Fail
 ; ===============================================================================================================================
 Func __AcrobatReader_PollFail(ByRef $m, $iError, $iExtended)
 	__AcrobatReader_Fail($m, $iError, $iExtended)
-	Return SetError($iError, $iExtended, $ACROBATREADER_ERROR)
+	Local $iFailureError = @error, $iFailureExtended = @extended
+	Return SetError($iFailureError, $iFailureExtended, $ACROBATREADER_ERROR)
 EndFunc   ;==>__AcrobatReader_PollFail
 
 ; #INTERNAL_USE_ONLY# ===========================================================================================================
