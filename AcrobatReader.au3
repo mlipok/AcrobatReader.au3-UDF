@@ -1,7 +1,7 @@
 #include-once
 ; #INDEX# =======================================================================================================================
 ; Title .........: AcrobatReader.au3 UDF
-; Description: ..: AutoIt UDF (version 2.0.0) for embedding and controlling Acrobat PDF previews in custom GUIs, with an optional standalone viewer.
+; Description: ..: AutoIt UDF (version 2.1.0) for embedding and controlling Acrobat PDF previews in custom GUIs, with an optional standalone viewer.
 ; Repository ....: https://github.com/mlipok/AcrobatReader.au3-UDF
 ; Forum link ....: https://www.autoitscript.com/forum/index.php?showtopic=162195
 ; License .......: MIT
